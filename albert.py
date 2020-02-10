@@ -24,7 +24,7 @@ import math
 import six
 import tensorflow as tf
 
-from utils import tf_utils
+import tf_utils
 
 
 class AlbertConfig(object):
