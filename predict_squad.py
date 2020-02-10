@@ -39,6 +39,16 @@ flags.DEFINE_integer(
     'The maximum length of an answer that can be generated. This is needed '
     'because the start and end predictions are not conditioned on one another.')
 
+flags.DEFINE_integer(
+    'doc_stride', 128,
+    'doc_stride'
+    'doc_stride')
+
+flags.DEFINE_integer(
+    'max_query_length', 64,
+    'max_query_length'
+    'max_query_length')
+    
 flags.DEFINE_string(
     "albert_config_file", None,
     "The config json file corresponding to the pre-trained ALBERT model. "
