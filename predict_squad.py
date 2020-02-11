@@ -50,16 +50,20 @@ flags.DEFINE_integer(
     'max_query_length')
     
 flags.DEFINE_string(
-    "albert_config_file", None,
+    "albert_config_file", 'config.json',
     "The config json file corresponding to the pre-trained ALBERT model. "
     "This specifies the model architecture.")
 
 
-flags.DEFINE_string("spm_model_file", None,
+flags.DEFINE_string("spm_model_file", '30k-clean.model',
                     "The model file for sentence piece tokenization.")
 
 flags.DEFINE_string(
-    "model_dir", None,
+    "model_dir", '',
+    "The output directory where the model checkpoints will be written.")
+
+flags.DEFINE_string(
+    "checkpoint_path", 'ctl_step_6992.ckpt-3',
     "The output directory where the model checkpoints will be written.")
 
 flags.DEFINE_enum(
@@ -337,7 +341,7 @@ def predict_squad_customized(strategy, albert_config,
         else:
             pass
 
-    checkpoint_path = tf.train.latest_checkpoint(FLAGS.model_dir)
+    checkpoint_path = FLAGS.checkpoint_path #tf.train.latest_checkpoint(FLAGS.model_dir)
     logging.info('Restoring checkpoints from %s', checkpoint_path)
     checkpoint = tf.train.Checkpoint(model=squad_model)
     checkpoint.restore(checkpoint_path).expect_partial()
