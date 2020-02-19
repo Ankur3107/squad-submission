@@ -923,7 +923,7 @@ def accumulate_predictions_v2(result_dict, cls_dict, all_examples,
 def write_predictions_v2(all_examples, all_features, all_results, n_best_size,
                       max_answer_length, output_prediction_file,
                       output_nbest_file, output_null_log_odds_file,
-                      start_n_top, end_n_top):
+                      start_n_top, end_n_top, null_score_diff_threshold=None):
   """Writes final predictions to the json file and log-odds of null if needed."""
   logging.info("Writing predictions to: %s", (output_prediction_file))
   
@@ -1031,7 +1031,7 @@ def write_predictions_v2(all_examples, all_features, all_results, n_best_size,
     score_diff = sum(cls_dict[example_index]) / len(cls_dict[example_index])
     scores_diff_json[example.qas_id] = score_diff
     # predict null answers when null threshold is provided
-    if FLAGS.null_score_diff_threshold is None or score_diff < FLAGS.null_score_diff_threshold:
+    if null_score_diff_threshold is None or score_diff < null_score_diff_threshold:
       all_predictions[example.qas_id] = best_non_null_entry.text
     else:
       all_predictions[example.qas_id] = ""

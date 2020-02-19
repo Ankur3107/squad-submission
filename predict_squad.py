@@ -24,6 +24,9 @@ flags.DEFINE_enum(
     '`predict`: predict answers from the squad json file. ')
 
 # Predict processing related.
+
+flags.DEFINE_string('model_name',None)
+
 flags.DEFINE_string('predict_file', None,
                     'Prediction data path with train tfrecords.')
 flags.DEFINE_integer('predict_batch_size', 8,
@@ -336,8 +339,15 @@ def predict_squad_customized(strategy, albert_config,
     with strategy.scope():
         # add comments for #None,0.1,1,0
         if FLAGS.version_2_with_negative:
-            squad_model = get_model_v2(albert_config, FLAGS.max_seq_length,
+
+            if FLAGS.model_name = 'tuned_albert':
+
+                squad_model = get_model_v2(albert_config, FLAGS.max_seq_length,
                                        None, 0.1, FLAGS.start_n_top, FLAGS.end_n_top, 0.0, 1, 0)
+            elif FLAGS.model_name = 'albert_bidaf':
+                squad_model = get_model_v2_bidaf(albert_config, FLAGS.max_seq_length,
+                                       None, 0.1, FLAGS.start_n_top, FLAGS.end_n_top, 0.0, 1, 0)
+
         else:
             pass
 
@@ -386,6 +396,103 @@ def get_model_v2(albert_config, max_seq_length, init_checkpoint, learning_rate,
 
     squad_model = ALBertQAModel(
         albert_config, max_seq_length, init_checkpoint, start_n_top, end_n_top, dropout)
+
+    return squad_model
+
+class ALBertQAModel_v2(tf.keras.Model):
+
+    def __init__(self, albert_config, max_seq_length, init_checkpoint, start_n_top, end_n_top, dropout=0.1, **kwargs):
+        super(ALBertQAModel_v2, self).__init__(**kwargs)
+        self.albert_config = copy.deepcopy(albert_config)
+        self.initializer = tf.keras.initializers.TruncatedNormal(
+            stddev=self.albert_config.initializer_range)
+        float_type = tf.float32
+
+        input_word_ids = tf.keras.layers.Input(
+            shape=(max_seq_length,), dtype=tf.int32, name='input_word_ids')
+        input_mask = tf.keras.layers.Input(
+            shape=(max_seq_length,), dtype=tf.int32, name='input_mask')
+        input_type_ids = tf.keras.layers.Input(
+            shape=(max_seq_length,), dtype=tf.int32, name='input_type_ids')
+
+        albert_layer = AlbertModel(config=albert_config, float_type=float_type)
+
+        pooled_output, sequence_output = albert_layer(
+            input_word_ids, input_mask, input_type_ids)
+
+        bilstm = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(512, return_sequences=True))(sequence_output)
+        bilstm_self = attention.SeqSelfAttention(attention_activation='sigmoid')(bilstm)
+        
+        bigru = tf.keras.layers.Bidirectional(tf.keras.layers.GRU(256, return_sequences=True))(bilstm)
+        bigru_self = attention.SeqSelfAttention(attention_activation='sigmoid')(bigru)
+        
+        conc = tf.keras.layers.Concatenate()([bilstm_self, bigru_self])#([bilstm, bigru])#([bilstm_self, bigru_self])
+
+
+        self.albert_model = tf.keras.Model(inputs=[input_word_ids, input_mask, input_type_ids],
+                                           outputs=[pooled_output, sequence_output])
+        if init_checkpoint != None:
+            print('init_checkpoint loading ...')
+            self.albert_model.load_weights(init_checkpoint)
+
+        self.albert_lstm = tf.keras.Model(inputs=[input_word_ids, input_mask, input_type_ids],
+                                           outputs=conc)
+
+        self.qalayer = ALBertQALayer(conc.shape[-1], start_n_top, end_n_top,
+                                     self.initializer, dropout)
+
+    def call(self, inputs, **kwargs):
+        # unpacked_inputs = tf_utils.unpack_inputs(inputs)
+        unique_ids = inputs["unique_ids"]
+        input_word_ids = inputs["input_ids"]
+        input_mask = inputs["input_mask"]
+        segment_ids = inputs["segment_ids"]
+        cls_index = tf.reshape(inputs["cls_index"], [-1])
+        p_mask = inputs["p_mask"]
+        if kwargs.get('training',False):
+            start_positions = inputs["start_positions"]
+        else:
+            start_positions = None
+        conc_output = self.albert_lstm(
+            [input_word_ids, input_mask, segment_ids], **kwargs)
+
+        output = self.qalayer(
+            conc_output, p_mask, cls_index, start_positions, **kwargs)
+        return (unique_ids,) + output
+
+def get_model_v2_bidaf(albert_config_dict, max_seq_length, init_checkpoint, learning_rate,
+                 start_n_top, end_n_top, dropout, num_train_steps, num_warmup_steps):
+
+    """Returns keras model"""
+    if isinstance(albert_config_dict, dict):
+        albert_config = AlbertConfig.from_dict(albert_config_dict)
+    else:
+        albert_config = albert_config_dict
+    print('new model ALBertQAModel_v2 ...')
+    squad_model = ALBertQAModel_v2(
+        albert_config, max_seq_length, init_checkpoint, start_n_top, end_n_top, dropout)
+
+    learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(initial_learning_rate=learning_rate,
+                                                                     decay_steps=num_train_steps, end_learning_rate=0.0)
+    if num_warmup_steps:
+        learning_rate_fn = WarmUp(initial_learning_rate=learning_rate,
+                                  decay_schedule_fn=learning_rate_fn,
+                                  warmup_steps=num_warmup_steps)
+
+    if FLAGS.optimizer == "LAMB":
+        optimizer_fn = LAMB
+    else:
+        optimizer_fn = AdamWeightDecay
+
+    optimizer = optimizer_fn(
+        learning_rate=learning_rate_fn,
+        weight_decay_rate=FLAGS.weight_decay,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=FLAGS.adam_epsilon,
+        exclude_from_weight_decay=['layer_norm', 'bias'])
+
+    squad_model.optimizer = optimizer
 
     return squad_model
 
