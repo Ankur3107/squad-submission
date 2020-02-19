@@ -17,7 +17,7 @@ cp model/ctl_step_6992.ckpt-3.data-00001-of-00002 full_code/code/
 cp model2/ctl_step_8262.ckpt-1.data-00001-of-00002 full_code/code/
 
 
-cp dev-vs2.0.json full_code/code/
+cp ${INPUT_FILE} full_code/code/
 
 cd full_code/code
 
@@ -39,7 +39,7 @@ python ensemble.py \
   --input_nbest_files=../../tuned_albert/nbest_predictions.json,../../albert_bidaf/nbest_predictions.json \
   --input_null_files=../../tuned_albert/null_odds.json,../../albert_bidaf/null_odds.json \
   --null_score_thresh=0.0 \
-  --output_file=${OUTPUT_FILE}
+  --output_file=../../${OUTPUT_FILE}
 
 
 cd ../../
