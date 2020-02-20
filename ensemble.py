@@ -8,10 +8,10 @@ import tensorflow as tf
 
 from absl import app, flags, logging
 
-flags.DEFINE_string('input_nbest_files',None)
-flags.DEFINE_string('input_null_files',None)
-flags.DEFINE_float('null_score_thresh',None)
-flags.DEFINE_string('output_file',None)
+flags.DEFINE_string('input_nbest_files',None,'')
+flags.DEFINE_string('input_null_files',None,'')
+flags.DEFINE_float('null_score_thresh',None,'')
+flags.DEFINE_string('output_file',None,'')
 
 
 FLAGS = flags.FLAGS
