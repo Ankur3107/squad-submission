@@ -14,6 +14,7 @@ import squad_lib
 import tokenization
 import tf_utils
 from albert import AlbertConfig, AlbertModel
+import attention
 
 flags.DEFINE_enum(
     'mode', 'predict',
@@ -25,7 +26,7 @@ flags.DEFINE_enum(
 
 # Predict processing related.
 
-flags.DEFINE_string('model_name',None)
+flags.DEFINE_string('model_name','tuned_albert','Name of Model to execute')
 
 flags.DEFINE_string('predict_file', None,
                     'Prediction data path with train tfrecords.')
@@ -321,37 +322,12 @@ def get_raw_results_v2(predictions):
                 cls_logits=values[5].tolist()
                 )
 
-def predict_squad_customized(strategy, albert_config,
-                             predict_tfrecord_path, num_steps):
-    """Make predictions using a Bert-based squad model."""
-    if FLAGS.version_2_with_negative:
-        predict_dataset = input_pipeline.create_squad_dataset_v2(
-            predict_tfrecord_path,
-            FLAGS.max_seq_length,
-            FLAGS.predict_batch_size,
-            is_training=False)
-    else:
-        pass
+def get_Answers(checkpoint_path, squad_model, strategy, predict_dataset, num_steps):
 
     predict_iterator = iter(
         strategy.experimental_distribute_dataset(predict_dataset))
 
-    with strategy.scope():
-        # add comments for #None,0.1,1,0
-        if FLAGS.version_2_with_negative:
-
-            if FLAGS.model_name = 'tuned_albert':
-
-                squad_model = get_model_v2(albert_config, FLAGS.max_seq_length,
-                                       None, 0.1, FLAGS.start_n_top, FLAGS.end_n_top, 0.0, 1, 0)
-            elif FLAGS.model_name = 'albert_bidaf':
-                squad_model = get_model_v2_bidaf(albert_config, FLAGS.max_seq_length,
-                                       None, 0.1, FLAGS.start_n_top, FLAGS.end_n_top, 0.0, 1, 0)
-
-        else:
-            pass
-
-    checkpoint_path = FLAGS.checkpoint_path #tf.train.latest_checkpoint(FLAGS.model_dir)
+    #checkpoint_path = FLAGS.checkpoint_path #tf.train.latest_checkpoint(FLAGS.model_dir)
     logging.info('Restoring checkpoints from %s', checkpoint_path)
     checkpoint = tf.train.Checkpoint(model=squad_model)
     checkpoint.restore(checkpoint_path).expect_partial()
@@ -389,6 +365,44 @@ def predict_squad_customized(strategy, albert_config,
         if len(all_results) % 100 == 0:
             logging.info('Made predictions for %d records.', len(all_results))
     return all_results
+
+def predict_squad_customized(strategy, albert_config,
+                             predict_tfrecord_path, num_steps):
+    """Make predictions using a Bert-based squad model."""
+    if FLAGS.version_2_with_negative:
+        predict_dataset = input_pipeline.create_squad_dataset_v2(
+            predict_tfrecord_path,
+            FLAGS.max_seq_length,
+            FLAGS.predict_batch_size,
+            is_training=False)
+    else:
+        pass
+
+
+    with strategy.scope():
+        # add comments for #None,0.1,1,0
+        if FLAGS.version_2_with_negative:
+
+            if FLAGS.model_name == 'tuned_albert':
+
+                squad_model = get_model_v2(albert_config, FLAGS.max_seq_length,
+                                       None, 0.1, FLAGS.start_n_top, FLAGS.end_n_top, 0.0, 1, 0)
+            elif FLAGS.model_name == 'albert_bidaf':
+                squad_model = get_model_v2_bidaf(albert_config, FLAGS.max_seq_length,
+                                       None, 0.1, FLAGS.start_n_top, FLAGS.end_n_top, 0.0, 1, 0)
+
+        else:
+            pass
+    
+
+    checkpoint_paths = FLAGS.checkpoint_path.split(',')
+    checkpoint_path_0 = checkpoint_paths[0]#FLAGS.checkpoint_path
+    result1 = get_Answers(checkpoint_path_0, squad_model, strategy, predict_dataset, num_steps)
+    checkpoint_path_1 = checkpoint_paths[1]#FLAGS.checkpoint_path
+    result2 = get_Answers(checkpoint_path_1, squad_model, strategy, predict_dataset, num_steps)
+    
+    
+    return result1, result2
 
 def get_model_v2(albert_config, max_seq_length, init_checkpoint, learning_rate,
                  start_n_top, end_n_top, dropout, num_train_steps, num_warmup_steps):
@@ -511,7 +525,7 @@ def predict_squad(strategy):
                                            spm_model_file=FLAGS.spm_model_file, do_lower_case=FLAGS.do_lower_case)
 
     eval_writer = squad_lib.FeatureWriter(
-        filename=os.path.join(FLAGS.model_dir, 'eval.tf_record'),
+        filename=os.path.join(FLAGS.model_dir.split(',')[0], 'eval.tf_record'),
         is_training=False)
     eval_features = []
 
@@ -539,18 +553,42 @@ def predict_squad(strategy):
     logging.info('  Batch size = %d', FLAGS.predict_batch_size)
 
     num_steps = math.ceil(dataset_size / FLAGS.predict_batch_size)
-    all_results = predict_squad_customized(strategy, albert_config,
+    all_results1,all_results2 = predict_squad_customized(strategy, albert_config,
                                            eval_writer.filename, num_steps)
 
-    output_prediction_file = os.path.join(FLAGS.model_dir, 'predictions.json')
-    output_nbest_file = os.path.join(FLAGS.model_dir, 'nbest_predictions.json')
-    output_null_log_odds_file = os.path.join(FLAGS.model_dir, 'null_odds.json')
+    model_dirs = FLAGS.model_dir.split(',')
+    model_dir1 = model_dirs[0]
+    model_dir2 = model_dirs[1]
+
+    output_prediction_file = os.path.join(model_dir1, 'predictions.json')
+    output_nbest_file = os.path.join(model_dir1, 'nbest_predictions.json')
+    output_null_log_odds_file = os.path.join(model_dir1, 'null_odds.json')
 
     if FLAGS.version_2_with_negative:
         squad_lib.write_predictions_v2(
             eval_examples,
             eval_features,
-            all_results,
+            all_results1,
+            FLAGS.n_best_size,
+            FLAGS.max_answer_length,
+            output_prediction_file,
+            output_nbest_file,
+            output_null_log_odds_file,
+            FLAGS.start_n_top,
+            FLAGS.end_n_top
+        )
+    else:
+        pass
+
+    output_prediction_file = os.path.join(model_dir2, 'predictions.json')
+    output_nbest_file = os.path.join(model_dir2, 'nbest_predictions.json')
+    output_null_log_odds_file = os.path.join(model_dir2, 'null_odds.json')
+
+    if FLAGS.version_2_with_negative:
+        squad_lib.write_predictions_v2(
+            eval_examples,
+            eval_features,
+            all_results2,
             FLAGS.n_best_size,
             FLAGS.max_answer_length,
             output_prediction_file,
