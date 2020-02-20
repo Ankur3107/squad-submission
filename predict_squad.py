@@ -71,7 +71,7 @@ flags.DEFINE_string(
     "The output directory where the model checkpoints will be written.")
 
 flags.DEFINE_enum(
-    "strategy_type", "one", ["one", "mirror"],
+    "strategy_type", "cpu", ["one", "mirror", "cpu"],
     "Training strategy for single or multi gpu training")
 
 # Other parameters
@@ -611,6 +611,8 @@ def main(_):
         strategy = tf.distribute.MirroredStrategy()
     elif FLAGS.strategy_type == 'one':
         strategy = tf.distribute.OneDeviceStrategy('GPU:0')
+    elif FLAGS.strategy_type == 'cpu':
+        strategy = tf.distribute.OneDeviceStrategy('CPU:0')
     else:
         raise ValueError('The distribution strategy type is not supported: %s' %
                          FLAGS.strategy_type)

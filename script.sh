@@ -14,6 +14,6 @@ cl run 	dev-vs2.0.json:dev-vs2.0.json :code :model "mkdir full_code; cp -r code/
 
 
 
-cl run dev-vs2.0.json:dev-vs2.0.json code2:code :model :model2 ensemble.sh:ensemble.sh "bash ensemble.sh dev-vs2.0.json predictions.json" -n run-predictions-ensemble --request-docker-image ankur310794/tensorflow:latest --request-memory 8g --request-cpus 2 --request-gpus 1
+cl run dev-vs2.0.json:dev-vs2.0.json code:code :model :model2 ensemble.sh:ensemble.sh "bash ensemble.sh dev-vs2.0.json predictions.json" -n run-predictions-ensemble --request-docker-image ankur310794/tensorflow:latest --request-memory 8g --request-cpus 2 --request-gpus 1
 
 cl run google_drive_2.sh:google_drive_2.sh "sh google_drive_2.sh" -n model2 --request-docker-image codalab/default-cpu:latest --request-memory 4g --request-cpus 1 --request-network true
