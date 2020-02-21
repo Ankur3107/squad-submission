@@ -23,17 +23,10 @@ cd full_code/code
 
 python predict_squad.py \
   --predict_file=${INPUT_FILE} \
-  --model_dir=../../tuned_albert/ \
+  --model_dir=../../tuned_albert/,../../tuned_albert_2/ \
   --model_name=tuned_albert \
   --null_score_diff_threshold=1.0 \
-  --checkpoint_path=ctl_step_6992.ckpt-3
-
-python predict_squad.py \
-  --predict_file=${INPUT_FILE} \
-  --model_dir=../../tuned_albert_2/ \
-  --model_name=tuned_albert \
-  --null_score_diff_threshold=1.0 \
-  --checkpoint_path=ctl_step_5508.ckpt-1
+  --checkpoint_path=ctl_step_6992.ckpt-3,ctl_step_5508.ckpt-1
 
 python ensemble.py \
   --input_nbest_files=../../tuned_albert/nbest_predictions.json,../../tuned_albert_2/nbest_predictions.json \
