@@ -575,7 +575,7 @@ def predict_squad(strategy):
             squad_lib.write_predictions_v2(
                 eval_examples,
                 eval_features,
-                all_results,
+                all_result,
                 FLAGS.n_best_size,
                 FLAGS.max_answer_length,
                 output_prediction_file,
