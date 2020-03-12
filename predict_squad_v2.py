@@ -570,12 +570,12 @@ def predict_squad(strategy):
         output_prediction_file = os.path.join(FLAGS.model_dir, prediction_file)
         output_nbest_file = os.path.join(FLAGS.model_dir, nbest_file)
         output_null_log_odds_file = os.path.join(FLAGS.model_dir, null_file)
-
+        print('Writting at :', output_prediction_file, output_nbest_file, output_null_log_odds_file)
         if FLAGS.version_2_with_negative:
             squad_lib.write_predictions_v2(
                 eval_examples,
                 eval_features,
-                all_results1,
+                all_results,
                 FLAGS.n_best_size,
                 FLAGS.max_answer_length,
                 output_prediction_file,
