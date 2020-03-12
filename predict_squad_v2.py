@@ -342,7 +342,7 @@ def get_Answers(checkpoint_path, squad_model, strategy, predict_dataset, num_ste
             if FLAGS.version_2_with_negative:
                 y = squad_model(x, training=False)
                 unique_ids, start_top_log_probs, start_top_index, end_top_log_probs, end_top_index, cls_logits = y
-                return dict(unique_id=unique_ids,
+                return dict(unique_ids=unique_ids,
                     start_top_log_probs=start_top_log_probs,
                     start_top_index=start_top_index,
                     end_top_log_probs=end_top_log_probs,
