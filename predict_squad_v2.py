@@ -399,7 +399,7 @@ def predict_squad_customized(strategy, albert_config,
     results = []
 
     for checkpoint_path in checkpoint_paths:
-        temp_result = get_Answers(checkpoint_path_0, squad_model, strategy, predict_dataset, num_steps)
+        temp_result = get_Answers(checkpoint_path, squad_model, strategy, predict_dataset, num_steps)
         results.append(temp_result)
 
     return results
