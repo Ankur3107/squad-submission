@@ -864,7 +864,7 @@ def accumulate_predictions_v2(result_dict, cls_dict, all_examples,
 
   unique_id_to_result = {}
   for result in all_results:
-    print('result :', result)
+    #print('result :', result)
     unique_id_to_result[result.unique_id] = result
 
   for (example_index, example) in enumerate(all_examples):
